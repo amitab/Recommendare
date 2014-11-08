@@ -1,2 +1,2 @@
-def Recommendare:
+class Recommendare:
     
