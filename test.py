@@ -1,7 +1,12 @@
-from autoloader import Helper, Prediction, SimilarityMeasure
+import math
+
 from pymongo import MongoClient
 
-import math
+import autoloader
+import Helper
+import Prediction
+import SimilarityMeasure
+
 
 client = MongoClient('localhost', 27017)
 db = client.hypertarget_ads
