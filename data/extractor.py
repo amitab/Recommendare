@@ -19,8 +19,7 @@ def load_movie_db(path):
     for line in reader:
         if not line[0] in movies.keys():
             movies[line[0]] = {
-                'id': int(line[0]),
-                'ratings': {}
+                'id': int(line[0])
             }
         movies[line[0]]['name'] = line[1]
         movies[line[0]]['release_date'] = line[2]
@@ -58,12 +57,25 @@ def load_movie_db(path):
     i_f = open( path + '/u.data', 'r' )
     reader = csv.reader( i_f , delimiter = "\t")
     for line in reader:
+        """
         if not line[1] in movies.keys():
             movies[line[1]] = {
-                'id': int(line[1]),
-                'ratings': {}
+                'id': int(line[1])
             }
+        if 'ratings' not in movies[line[1]].keys():
+            movies[line[1]]['ratings'] = {}
         movies[line[1]]['ratings'][int(line[0])] = {
+            'rating': int(line[2]),
+            'timestamp': int(line[3])
+        }
+        """
+        if not line[0] in users.keys():
+            users[line[0]] = {
+                'id': int(line[0])
+            }
+        if 'ratings' not in users[line[0]].keys():
+            users[line[0]]['ratings'] = {}
+        users[line[0]]['ratings'][int(line[1])] = {
             'rating': int(line[2]),
             'timestamp': int(line[3])
         }
