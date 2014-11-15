@@ -28,15 +28,15 @@ class UserSimilarity:
         else:
             return dot_pdt / float(den)
         
-    def change_range(self, OldValue, OldMax, OldMin, NewMax, NewMin):
-        OldRange = (OldMax - OldMin)
-        if OldRange == 0:
-            NewValue = NewMin
+    def change_range(self, old_value, old_max, old_min, new_max, new_min):
+        old_range = (old_max - old_min)
+        if old_range == 0:
+            new_value = new_min
         else:
-            NewRange = (NewMax - NewMin)  
-            NewValue = (((OldValue - OldMin) * NewRange) / float(OldRange)) + NewMin
+            new_range = (new_max - new_min)  
+            new_value = (((old_value - old_min) * new_range) / float(old_range)) + new_min
 
-        return NewValue
+        return new_value
 
     def build_user_vectors(self, user1, user2):
 
@@ -81,7 +81,7 @@ class UserSimilarity:
                 similar_users[user['id']] = self.find_users_similarity(current_user, user)
                 
         return similar_users
-
+    
     def build_user_similarity(self):
         
         user_count = self.db.users.count()
@@ -106,3 +106,40 @@ class UserSimilarity:
         
         # sudo mongoimport --db hypertarget_ads --collection user_similarity --type json --file user_similarity.json --jsonArray
         
+    def find_k_nearest(self, user_id, k):
+        similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
+        neighbours = []
+        for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
+            neighbours.append({
+                    'user_id': int(key),
+                    'similarity': value
+            })
+            # print str(key) + " " + str(value)
+        return neighbours
+    
+    def get_user_movies(self, user_id):
+        movies = []
+        ratings = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
+        for movie_id in ratings.keys():
+            movies.append(movie_id)
+            
+        return movies
+    
+    def get_neighbours_movies(self, user_id, k = 3):
+        
+        neighbours = self.find_k_nearest(user_id, k)
+        movies = set()
+        for neighbour in neighbours:
+            if movies:
+                movies = movies | set(self.get_user_movies(neighbour['user_id']))
+            else:
+                movies = set(self.get_user_movies(neighbour['user_id']))
+        
+        meta = {
+            'movies': list(movies),
+            'neighbours': neighbours
+        }
+            
+        return meta
+            
+    

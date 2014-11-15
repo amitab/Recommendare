@@ -5,4 +5,5 @@ client = MongoClient('localhost', 27017)
 db = client.hypertarget_ads
 
 sim = UserSimilarity(db)
-sim.dump_similarity_matrix()
+#sim.dump_similarity_matrix()
+print sim.get_neighbours_movies(479)
