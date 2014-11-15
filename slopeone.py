@@ -50,7 +50,7 @@ class SlopeOne:
         
         for i in movies:
             deviation_matrix[i] = {
-                'movie_id': i,
+                'movie_id': int(i),
                 'deviations': {}
             }
             for j in movies:
@@ -68,3 +68,20 @@ class SlopeOne:
         print "deviation.json written to data/deviation.json"
         
         # sudo mongoimport --db hypertarget_ads --collection deviations --type json --file deviation.json --jsonArray
+        
+    def predict_rating(self, user_id, movie_id):
+        user_ratings = self.db.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
+        movie_deviations = self.db.deviations.find_one({'movie_id': movie_id}, {'_id': 0, 'deviations': 1})['deviations']
+        
+        num = 0
+        den = 0
+        
+        for movie in user_ratings:
+            if int(movie) != movie_id:
+                num += (movie_deviations[movie]['deviation'] + user_ratings[movie]['rating']) * movie_deviations[movie]['cardinality']
+                den += movie_deviations[movie]['cardinality']
+        
+        if den == 0:
+            return 0
+        else:
+            return num / float(den)

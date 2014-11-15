@@ -128,18 +128,11 @@ class UserSimilarity:
     def get_neighbours_movies(self, user_id, k = 3):
         
         neighbours = self.find_k_nearest(user_id, k)
-        movies = set()
-        for neighbour in neighbours:
-            if movies:
-                movies = movies | set(self.get_user_movies(neighbour['user_id']))
-            else:
-                movies = set(self.get_user_movies(neighbour['user_id']))
+        movies = self.get_user_movies(user_id)
+        for index, neighbour in enumerate(neighbours):
+            neighbours[index]['movies'] = self.get_user_movies(neighbours[index]['user_id'])
+            neighbours[index]['movies'] = list(set(neighbours[index]['movies']).difference(set(movies)))
         
-        meta = {
-            'movies': list(movies),
-            'neighbours': neighbours
-        }
-            
-        return meta
+        return neighbours
             
     
