@@ -135,4 +135,7 @@ class UserSimilarity:
         
         return neighbours
             
-    
+    def get_user_rating_for(self, user_id, movie_id):
+        
+        rating = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
+        return rating[movie_id]['rating']
