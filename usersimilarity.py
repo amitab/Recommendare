@@ -4,10 +4,11 @@ import json
 
 class UserSimilarity:
     
-    def __init__(self, db):
-        self.db = db
-        self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
-        self.user_similarity_matrix = {}
+    def __init__(self, db = None):
+        if db != None:
+            self.db = db
+            self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
+            self.user_similarity_matrix = {}
     
     def cosine_similarity(self, vector_x, vector_y):
         dot_pdt = 0

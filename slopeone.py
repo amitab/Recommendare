@@ -3,9 +3,10 @@ import json
 
 class SlopeOne:
     
-    def __init__(self, db):
-        self.deviation_matrix = {}
-        self.db = db
+    def __init__(self, db = None):
+        if db != None:
+            self.deviation_matrix = {}
+            self.db = db
     
     def deviation(self, item1, item2):
         # finding common users who rated the movie
