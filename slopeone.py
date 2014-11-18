@@ -85,3 +85,25 @@ class SlopeOne:
             return 0
         else:
             return num / float(den)
+    
+    def update_deviation(self, data):
+        user_ratings = self.db.users.find_one({'id': data['user_id']}, {'_id': 0})['ratings']
+        movie_deviations = self.db.deviations.find_one({'movie_id': data['movie_id']}, {'_id': 0, 'deviations': 1})['deviations']
+        
+        for movie in user_ratings:
+            card = movie_deviations[movie]['cardinality']
+            dev = movie_deviations[movie]['deviation']
+            
+            new_dev = ( (card * dev) + (data['rating'] - user_ratings[movie]['rating']) ) / float(card + 1)
+            
+            # update
+            # for new_movie vs movie = new_dev
+            # for movie vs new_movie = -new_dev
+            
+            key = 'deviations.' + str(movie)
+            self.db.deviations.update({'movie_id': data['movie_id']}, {'$set': {key : {'deviation': new_dev, 'cardinality': card + 1}}})
+            
+            key = 'deviations.' + str(data['movie_id'])
+            self.db.deviations.update({'movie_id': int(movie)}, {'$set': {key : {'deviation': -new_dev, 'cardinality': card + 1}}})
+            
+        return

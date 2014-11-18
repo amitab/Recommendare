@@ -1,3 +1,5 @@
+import time
+
 from pymongo import MongoClient
 from operator import itemgetter, attrgetter, methodcaller
 
@@ -50,7 +52,36 @@ class Recommendare:
             for neighbour in movies_list[movie]['neighbours']:
                 num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
                 den += neighbour['neighbour_similarity']
+            
+                recommendations.append((movie, num / float(den)))
                 
-            recommendations.append((movie, num / float(den)))
             
         return sorted(recommendations, key = itemgetter(1), reverse = True)
+    
+    def get_next_id(self):
+        max_id = self.db.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
+        return int(max_id) + 1
+    
+    def register_user(self, data):
+        user = {
+            'ratings': {},
+            'age': data['age'],
+            'sex': data['sex'],
+            'occupation': data['occupation'],
+            'id': self.get_next_id(),
+            'zip_code': data['zip_code']
+        }
+        
+        self.db.users.insert(user)
+        
+        
+    def rate_movie(self, data):
+        new_rating = {
+            'rating': data['rating'],
+            'timestamp': time.time()
+        }
+        key = 'rating.' + str(data['movie_id'])
+        self.db.users.update({'id': data['user_id']}, {'$set': {key: new_rating}})
+        
+        self.slope_one.update_deviation(data)
+        return
