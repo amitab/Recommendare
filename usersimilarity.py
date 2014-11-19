@@ -74,8 +74,12 @@ class UserSimilarity:
         users = self.build_user_vectors(user1, user2)
         return self.cosine_similarity(users['user1'], users['user2'])
     
-    def find_similar_users(self, user_id):
-        current_user = self.db.users.find_one({'id': user_id}, {'_id': 0})
+    def find_similar_users(self, user_id = None, user = None):
+        if user_id != None:
+            current_user = self.db.users.find_one({'id': user_id}, {'_id': 0})
+        else:
+            current_user = user
+        
         similar_users = {}
         for user in self.db.users.find():
             if user['id'] != user_id:
@@ -94,9 +98,19 @@ class UserSimilarity:
             
             self.user_similarity_matrix[user['id']] = {
                 'user_id': user['id'],
-                'similarity': self.find_similar_users(user['id'])
+                'similarity': self.find_similar_users(user_id = user['id'])
             }
             my_prbar.update()
+            
+    def update_user_similarity(self, user_data):
+        
+        similarity_obj = {
+            'user_id': user_data['id'],
+            'similarity': self.find_similar_users(user = user_data)
+        }
+        
+        db.user_similarity.insert(similarity_obj)
+        
             
     def dump_similarity_matrix(self):
         if len(self.user_similarity_matrix) == 0:

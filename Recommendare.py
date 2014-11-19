@@ -64,7 +64,6 @@ class Recommendare:
     
     def register_user(self, data):
         user = {
-            'ratings': {},
             'age': data['age'],
             'sex': data['sex'],
             'occupation': data['occupation'],
@@ -73,6 +72,9 @@ class Recommendare:
         }
         
         self.db.users.insert(user)
+        self.user_similarity.update_user_similarity(user)
+        
+        return
         
         
     def rate_movie(self, data):
