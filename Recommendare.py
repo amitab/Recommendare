@@ -54,7 +54,7 @@ class Recommendare:
                     num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
                     den += neighbour['neighbour_similarity']
 
-                    recommendations.append((movie, num / float(den)))
+                recommendations.append((movie, num / float(den)))
 
 
             return sorted(recommendations, key = itemgetter(1), reverse = True)
