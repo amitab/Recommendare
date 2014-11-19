@@ -122,15 +122,18 @@ class UserSimilarity:
         # sudo mongoimport --db hypertarget_ads --collection user_similarity --type json --file user_similarity.json --jsonArray
         
     def find_k_nearest(self, user_id, k):
-        similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
-        neighbours = []
-        for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
-            neighbours.append({
-                    'user_id': int(key),
-                    'similarity': value
-            })
-            # print str(key) + " " + str(value)
-        return neighbours
+        try:
+            similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
+            neighbours = []
+            for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
+                neighbours.append({
+                        'user_id': int(key),
+                        'similarity': value
+                })
+                # print str(key) + " " + str(value)
+            return neighbours
+        except:
+            return False
     
     def get_user_movies(self, user_id):
         movies = []

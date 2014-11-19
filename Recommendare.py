@@ -42,21 +42,24 @@ class Recommendare:
         return movies_list
         
     def recommend(self, user_id):
-        movies_list = self.rate_neighbours_movies(user_id)
-        recommendations = []
-        
-        for movie in movies_list:
-            num = movies_list[movie]['slope_rating']
-            den = 1
-            
-            for neighbour in movies_list[movie]['neighbours']:
-                num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
-                den += neighbour['neighbour_similarity']
-            
-                recommendations.append((movie, num / float(den)))
-                
-            
-        return sorted(recommendations, key = itemgetter(1), reverse = True)
+        try:
+            movies_list = self.rate_neighbours_movies(user_id)
+            recommendations = []
+
+            for movie in movies_list:
+                num = movies_list[movie]['slope_rating']
+                den = 1
+
+                for neighbour in movies_list[movie]['neighbours']:
+                    num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
+                    den += neighbour['neighbour_similarity']
+
+                    recommendations.append((movie, num / float(den)))
+
+
+            return sorted(recommendations, key = itemgetter(1), reverse = True)
+        except:
+            return False
     
     def get_next_id(self):
         max_id = self.db.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
