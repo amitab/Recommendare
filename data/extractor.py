@@ -14,19 +14,26 @@ def load_movie_db(path):
     
     #load movie data
     
-    i_f = open( path + '/u.movies.csv', 'r' )
+    i_f = open( path + '/u.item', 'r' )
     reader = csv.reader( i_f , delimiter = '|')
     for line in reader:
+        
+        for i, word in enumerate(line):
+            try:
+                line[i] = unicode(word, 'utf-8')
+            except:
+                line[i] = line[i].decode('latin-1')
+        
         if not line[0] in movies.keys():
             movies[line[0]] = {
                 'id': int(line[0])
             }
         movies[line[0]]['name'] = line[1]
         movies[line[0]]['release_date'] = line[2]
-        movies[line[0]]['url'] = line[3]
+        movies[line[0]]['url'] = line[4]
         movies[line[0]]['genre'] = []
         for i in range(0, 19):
-            if line[4 + i] == "1":
+            if line[5 + i] == "1":
                 movies[line[0]]['genre'].append(genres[i])
     i_f.close()
     
