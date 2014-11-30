@@ -1,4 +1,5 @@
 import time
+from multiprocessing.pool import ThreadPool as Pool
 
 from pymongo import MongoClient
 from operator import itemgetter, attrgetter, methodcaller
@@ -18,48 +19,56 @@ class Recommendare:
         self.user_similarity = UserSimilarity(self.db)
         self.slope_one = SlopeOne(self.db)
         
+        self.pool = Pool(processes = 15)
+        self.recommended_movies = {}
+    
+    def user_prediction(self, user_id, movie, neighbour):
+        if not movie in self.recommended_movies.keys():
+            self.recommended_movies[movie] = {
+                'slope_rating': self.slope_one.predict_rating(user_id, int(movie)),
+                'neighbours': []
+            }
+            
+        self.recommended_movies[movie]['neighbours'].append({
+            'neighbour_id': neighbour['user_id'],
+            'neighbour_rating': self.user_similarity.get_user_rating_for(neighbour['user_id'], movie),
+            'neighbour_similarity': neighbour['similarity']
+        })
+       
     def rate_neighbours_movies(self, user_id):
         neighbours = self.user_similarity.get_neighbours_movies(user_id)
-        movies_list = {}
         
         for index, neighbour in enumerate(neighbours):
             movies = neighbours[index]['movies']
             
             for movie in movies:
-                #neighbours[index]['movies'][movie] = self.slope_one.predict_rating(user_id, int(movie))
-                if not movie in movies_list.keys():
-                    movies_list[movie] = {
-                        'slope_rating': self.slope_one.predict_rating(user_id, int(movie)),
-                        'neighbours': []
-                    }
-                    
-                movies_list[movie]['neighbours'].append({
-                    'neighbour_id': neighbours[index]['user_id'],
-                    'neighbour_rating': self.user_similarity.get_user_rating_for(neighbours[index]['user_id'], movie),
-                    'neighbour_similarity': neighbours[index]['similarity']
-                })
+                self.pool.apply_async(self.user_prediction, (user_id, movie, neighbour))
                 
-        return movies_list
+        self.pool.close()
+        self.pool.join()
+                
+    def get_recommended_movies(self, user_id):
+        if len(self.recommended_movies) == 0:
+            self.rate_neighbours_movies(user_id)
+        return self.recommended_movies
         
     def recommend(self, user_id):
-        try:
-            movies_list = self.rate_neighbours_movies(user_id)
-            recommendations = []
+        movies_list = self.get_recommended_movies(user_id)
+        
+        recommendations = []
 
-            for movie in movies_list:
-                num = movies_list[movie]['slope_rating']
-                den = 1
+        for movie in movies_list:
+            num = movies_list[movie]['slope_rating']
+            den = 1
 
-                for neighbour in movies_list[movie]['neighbours']:
-                    num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
-                    den += neighbour['neighbour_similarity']
+            for neighbour in movies_list[movie]['neighbours']:
+                num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
+                den += neighbour['neighbour_similarity']
 
-                recommendations.append((movie, num / float(den)))
+            recommendations.append((movie, num / float(den)))
 
 
-            return sorted(recommendations, key = itemgetter(1), reverse = True)
-        except:
-            return False
+        return sorted(recommendations, key = itemgetter(1), reverse = True)
     
     def get_next_id(self):
         max_id = self.db.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']

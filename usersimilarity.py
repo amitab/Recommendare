@@ -104,12 +104,16 @@ class UserSimilarity:
             
     def update_user_similarity(self, user_data):
         
-        similarity_obj = {
-            'user_id': user_data['id'],
-            'similarity': self.find_similar_users(user = user_data)
-        }
-        
-        db.user_similarity.insert(similarity_obj)
+		similarity = self.find_similar_users(user = user_data)
+		similarity_obj = {'user_id': user_data['id'], 'similarity': similarity}
+		
+		# create a new similarity list for this guy
+		db.user_similarity.insert(similarity_obj)
+		key = 'similarity.' + str(user_data['id'])
+		
+		# update this persons similarity in the lists of all the other users
+		for user in similarity:
+			self.db.user_similarity.update({'user_id': user}, {'$set': {key : similarity[user]}})
         
             
     def dump_similarity_matrix(self):
