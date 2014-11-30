@@ -57,12 +57,21 @@ trap error_exit SIGINT
     if [ ! -f ml-100k.zip ]; then
         wget "http://files.grouplens.org/datasets/movielens/ml-100k.zip";
     fi
+	
+	cd "$DIR/data/ml-100k"
+	
+	if [ ! -f ml-100k.zip ]; then
+		wget "https://gist.githubusercontent.com/amitab/7869d7336b80dfc3c4e8/raw/u.item.tmdb"
+    fi
+	
+	cd "$DIR/data"
 
     remove_if_exists "$DIR/data"
 
     unzip "ml-100k.zip"
 
     python extractor.py ml-100k
+	python match_tmdb.py ml-100k
 
     if dpkg -s mongodb-org > /dev/null;
     then
@@ -122,7 +131,7 @@ trap error_exit SIGINT
     fi
 
     sudo mongoimport --db hypertarget_ads --collection users --type json --file users.json --jsonArray
-    sudo mongoimport --db hypertarget_ads --collection movies --type json --file movies.json --jsonArray
+	sudo mongoimport --db hypertarget_ads --collection movies --type json --file items.json --jsonArray
     sudo mongoimport --db hypertarget_ads --collection meta --type json --file meta.json --jsonArray
 
     echo "Precomputing Data ..."
