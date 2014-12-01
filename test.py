@@ -9,4 +9,4 @@ b = datetime.datetime.now()
 
 c = b - a
 print "Time Taken: " + str(c.microseconds)
-    
+
