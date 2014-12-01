@@ -17,12 +17,13 @@ class Hypertarget:
 		self.movie_wrapper = MovieWrapper(self.db)
 		
 	def hypertarget(self, user_id):
-		movie_set = self.recommender.recommend(user_id)
+		movie_set = self.recommender.recommend(user_id, 10)
 		movies = []
 		
 		for movie in movie_set:
 			movies.append({
 					'predicted_rating': movie[1],
+					'movie_id': movie[0],
 					'details': self.movie_wrapper.get_movie_details(movie[0])
 				})
 			

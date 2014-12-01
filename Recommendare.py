@@ -52,7 +52,7 @@ class Recommendare:
             self.rate_neighbours_movies(user_id)
         return self.recommended_movies
         
-    def recommend(self, user_id):
+    def recommend(self, user_id, count):
         movies_list = self.get_recommended_movies(user_id)
         
         recommendations = []
@@ -68,7 +68,7 @@ class Recommendare:
             recommendations.append((movie, num / float(den)))
 
 
-        return sorted(recommendations, key = itemgetter(1), reverse = True)
+        return sorted(recommendations, key = itemgetter(1), reverse = True)[:count]
     
     def get_next_id(self):
         max_id = self.db.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
