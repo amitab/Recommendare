@@ -1,4 +1,5 @@
 from pymongo import MongoClient
+import time
 
 import config
 
@@ -31,6 +32,9 @@ class UserWrapper:
         return int(max_id) + 1
 
     def register_user(self, data):
+    
+        self.user_similarity.update_user_similarity(user)
+        
         user = {
             'age': data['age'],
             'sex': data['sex'],
@@ -40,18 +44,19 @@ class UserWrapper:
         }
 
         self.db.users.insert(user)
-        self.user_similarity.update_user_similarity(user)
 
         return
 
 
     def rate_movie(self, data):
+
+        self.slope_one.update_deviation(data)
+        
         new_rating = {
             'rating': data['rating'],
             'timestamp': time.time()
         }
-        key = 'rating.' + str(data['movie_id'])
+        key = 'ratings.' + str(data['movie_id'])
         self.db.users.update({'id': data['user_id']}, {'$set': {key: new_rating}})
-
-        self.slope_one.update_deviation(data)
+        
         return
