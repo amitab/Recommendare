@@ -135,7 +135,7 @@ class UserSimilarity:
                     'similarity': value
                 })
                 # print str(key) + " " + str(value)
-                return neighbours
+            return neighbours
         except:
             return False
 
