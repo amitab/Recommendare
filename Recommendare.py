@@ -1,18 +1,20 @@
 import time
 from multiprocessing.pool import ThreadPool as Pool
-
 from pymongo import MongoClient
 from operator import itemgetter
 
+import config
 from usersimilarity import UserSimilarity
 from slopeone import SlopeOne
 
 class Recommendare:
 
     def __init__(self, db = None):
-        if db is None:
-            client = MongoClient('localhost', 27017)
+        if db == None:
+        
+            client = MongoClient(config.db_config['host'], config.db_config['port'])
             self.db = client.hypertarget_ads
+        
         else:
             self.db = db
 

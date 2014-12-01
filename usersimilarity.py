@@ -2,13 +2,23 @@ import math
 import pyprind
 import json
 
+from pymongo import MongoClient
+
+import config
+
 class UserSimilarity:
 
     def __init__(self, db = None):
-        if db != None:
+        if db == None:
+        
+            client = MongoClient(config.db_config['host'], config.db_config['port'])
+            self.db = client.hypertarget_ads
+        
+        else:
             self.db = db
-            self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
-            self.user_similarity_matrix = {}
+            
+        self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
+        self.user_similarity_matrix = {}
 
     def cosine_similarity(self, vector_x, vector_y):
         dot_pdt = 0
@@ -121,7 +131,7 @@ class UserSimilarity:
             self.build_user_similarity()
             with open('data/user_similarity.json', 'w') as outfile:
                 json.dump(self.user_similarity_matrix.values(), outfile)
-                print "deviation.json written to data/user_similarity.json"
+                print "user_similarity.json written to data/user_similarity.json"
 
         # sudo mongoimport --db hypertarget_ads --collection user_similarity --type json --file user_similarity.json --jsonArray
 

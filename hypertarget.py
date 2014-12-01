@@ -1,15 +1,18 @@
 from pymongo import MongoClient
 from operator import itemgetter, attrgetter, methodcaller
 
+import config
 from Recommendare import Recommendare
 from movie_wrapper import MovieWrapper
 
 class Hypertarget:
 
     def __init__(self, db = None):
-        if db is None:
-            client = MongoClient('localhost', 27017)
+        if db == None:
+        
+            client = MongoClient(config.db_config['host'], config.db_config['port'])
             self.db = client.hypertarget_ads
+        
         else:
             self.db = db
 
