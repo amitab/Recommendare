@@ -5,7 +5,7 @@ client = MongoClient('localhost', 27017)
 db = client.hypertarget_ads
 
 ht = Hypertarget()
-data = ht.hypertarget(479)
+data = ht.hypertarget(479, 10)
 
 user_seen = open('user_seen.data', 'w')
 user_rec = open('user_rec.data', 'w')

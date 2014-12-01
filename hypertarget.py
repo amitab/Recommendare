@@ -16,8 +16,8 @@ class Hypertarget:
 		self.recommender = Recommendare(self.db)
 		self.movie_wrapper = MovieWrapper(self.db)
 		
-	def hypertarget(self, user_id):
-		movie_set = self.recommender.recommend(user_id, 10)
+	def hypertarget(self, user_id, count):
+		movie_set = self.recommender.recommend(user_id, count)
 		movies = []
 		
 		for movie in movie_set:

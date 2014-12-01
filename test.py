@@ -4,7 +4,7 @@ from hypertarget import Hypertarget
 
 ht = Hypertarget()
 a = datetime.datetime.now()
-print ht.hypertarget(479)
+print ht.hypertarget(479, 10)
 b = datetime.datetime.now()
 
 c = b - a
