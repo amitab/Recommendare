@@ -93,7 +93,7 @@ class UserSimilarity:
         similar_users = {}
         for user in self.db.users.find():
             if user['id'] != user_id:
-                similar_users[user['id']] = self.find_users_similarity(current_user, user)
+                similar_users[str(user['id'])] = self.find_users_similarity(current_user, user)
 
         return similar_users
 

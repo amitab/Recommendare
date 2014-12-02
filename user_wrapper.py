@@ -33,7 +33,6 @@ class UserWrapper:
 
     def register_user(self, data):
     
-        self.user_similarity.update_user_similarity(user)
         
         user = {
             'age': data['age'],
@@ -42,6 +41,8 @@ class UserWrapper:
             'id': self.get_next_id(),
             'zip_code': data['zip_code']
         }
+        
+        self.user_similarity.update_user_similarity(user)
 
         self.db.users.insert(user)
 
