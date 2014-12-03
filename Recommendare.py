@@ -21,7 +21,7 @@ class Recommendare:
         self.user_similarity = UserSimilarity(self.db)
         self.slope_one = SlopeOne(self.db)
 
-        self.pool = Pool(processes = 15)
+        self.pool = Pool(processes = 10)
         self.recommended_movies = {}
 
     def user_prediction(self, user_id, movie, neighbour):
@@ -37,17 +37,16 @@ class Recommendare:
             'neighbour_similarity': neighbour['similarity']
         })
 
-    def rate_neighbours_movies(self, user_id):
+    def rate_neighbours_movies(self, user_id, count):
         neighbours = self.user_similarity.get_neighbours_movies(user_id, k = 3)
         all_movies = []
-        
         
         for neighbour in neighbours:
             all_movies.append(set(neighbour['movies']))
         
         temp = set.intersection(*all_movies)
         
-        if len(temp) != 0:
+        if len(temp) >= count:
             all_movies = temp
         else:
             all_movies = set.union(*all_movies)
@@ -60,13 +59,13 @@ class Recommendare:
         self.pool.close()
         self.pool.join()
 
-    def get_recommended_movies(self, user_id):
+    def get_recommended_movies(self, user_id, count):
         if len(self.recommended_movies) == 0:
-            self.rate_neighbours_movies(user_id)
+            self.rate_neighbours_movies(user_id, count)
             return self.recommended_movies
 
     def recommend(self, user_id, count):
-        movies_list = self.get_recommended_movies(user_id)
+        movies_list = self.get_recommended_movies(user_id, count)
 
         recommendations = []
 

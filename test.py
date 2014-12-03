@@ -4,7 +4,7 @@ from hypertarget import Hypertarget
 ht = Hypertarget()
 
 a = datetime.datetime.now()
-print ht.recommender.recommend(3, 100)
+print ht.recommender.recommend(944, 100)
 b = datetime.datetime.now()
 
 c = b - a
