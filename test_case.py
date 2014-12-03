@@ -1,6 +1,7 @@
 from user_wrapper import UserWrapper
 from Recommendare import Recommendare
 from slopeone import SlopeOne
+from usersimilarity import UserSimilarity
 
 from pymongo import MongoClient
 
@@ -53,11 +54,15 @@ rate3 = {
 uw.rate_movie(rate1)
 uw.rate_movie(rate2)
 uw.rate_movie(rate3)
+
+
+so = SlopeOne(db)
+
+print so.predict_rating(946, 500)
 """
 
 client = MongoClient('localhost', 27017)
 db = client.hypertarget_ads
 
-so = SlopeOne(db)
-
-print so.predict_rating(946, 500)
+us = UserSimilarity(db)
+us.dump_similarity_matrix()

@@ -19,6 +19,7 @@ class UserSimilarity:
             
         self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
         self.user_similarity_matrix = {}
+        self.genres = config.genres_list
 
     def cosine_similarity(self, vector_x, vector_y):
         dot_pdt = 0
@@ -74,6 +75,19 @@ class UserSimilarity:
         else:
             vector_x.extend([0, 1])
             vector_y.extend([1, 0])
+            
+        for genre in self.genres:
+        
+            if genre in user1['likes']:
+                vector_x.append(1)
+            else:
+                vector_x.append(0)
+                
+            if genre in user2['likes']:
+                vector_y.append(1)
+            else:
+                vector_y.append(0)
+                
 
         return {
             'user1': vector_x,
