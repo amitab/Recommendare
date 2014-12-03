@@ -38,13 +38,24 @@ class Recommendare:
         })
 
     def rate_neighbours_movies(self, user_id):
-        neighbours = self.user_similarity.get_neighbours_movies(user_id)
-
-        for index, neighbour in enumerate(neighbours):
-            movies = neighbours[index]['movies']
-
-            for movie in movies:
-                self.pool.apply_async(self.user_prediction, (user_id, movie, neighbour))
+        neighbours = self.user_similarity.get_neighbours_movies(user_id, k = 3)
+        all_movies = []
+        
+        
+        for neighbour in neighbours:
+            all_movies.append(set(neighbour['movies']))
+        
+        temp = set.intersection(*all_movies)
+        
+        if len(temp) != 0:
+            all_movies = temp
+        else:
+            all_movies = set.union(*all_movies)
+        
+        for neighbour in neighbours:
+            for n_movie in neighbour['movies']:
+                if n_movie in all_movies:
+                    self.pool.apply_async(self.user_prediction, (user_id, n_movie, neighbour))
 
         self.pool.close()
         self.pool.join()
