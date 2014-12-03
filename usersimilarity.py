@@ -61,13 +61,25 @@ class UserSimilarity:
         else:
             vector_x.extend([0, 1])
             vector_y.extend([1, 0])
-
+        
+        for i, char in enumerate(user1['zip_code']):
+            if user1['zip_code'][i] == user2['zip_code'][i]:
+                vector_x.append(1)
+                vector_y.append(1)
+            else:
+                for j in range(i, len(user1['zip_code'])):
+                    vector_x.append(0)
+                    vector_y.append(0)
+                break
+        
+        """
         if user1['zip_code'] == user2['zip_code']:
             vector_x.extend([1, 0])
             vector_y.extend([1, 0])
         else:
             vector_x.extend([0, 1])
             vector_y.extend([1, 0])
+        """
 
         if user1['occupation'] == user2['occupation']:
             vector_x.extend([1, 0])
