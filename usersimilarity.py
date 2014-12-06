@@ -20,7 +20,37 @@ class UserSimilarity:
         self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
         self.user_similarity_matrix = {}
         self.genres = config.genres_list
-
+    
+    def pearsons_similarity(self, vector_x, vector_y):
+            
+        vx_sum = 0
+        vy_sum = 0
+        vx_sq_sum = 0
+        vy_sq_sum = 0
+        vx_x_vy = 0
+        
+        for i in range(0, len(vector_x)):
+            try:
+                vx_sum += vector_x[i]
+                vy_sum += vector_y[i]
+                
+                vx_sq_sum += vector_x[i] ** 2
+                vy_sq_sum += vector_y[i] ** 2
+                
+                vx_x_vy += vector_x[i] * vector_y[i]
+            except:
+                print vector_x
+                print vector_y
+                exit()
+            
+        similarity = vx_x_vy - (vx_sum * vy_sum) / float(len(vector_x))
+        den = math.sqrt(vx_sq_sum - (vx_sum ** 2)/float(len(vector_x))) * math.sqrt(vy_sq_sum - (vy_sum ** 2)/float(len(vector_x)))
+        
+        if den == 0:
+            return 0
+        else:
+            return similarity / float(den)
+    
     def cosine_similarity(self, vector_x, vector_y):
         dot_pdt = 0
         length_x = 0
@@ -55,12 +85,24 @@ class UserSimilarity:
         vector_x = [ self.change_range(user1['age'], self.max_user_age, 0, 1, 0) ]
         vector_y = [ self.change_range(user2['age'], self.max_user_age, 0, 1, 0) ]
 
+        """
         if user1['sex'] == user2['sex']:
             vector_x.extend([1, 0])
             vector_y.extend([1, 0])
         else:
             vector_x.extend([0, 1])
             vector_y.extend([1, 0])
+        """
+            
+        if user1['sex'] == 'M':
+            vector_x.append(1)
+        else:
+            vector_x.append(0)
+            
+        if user2['sex'] == 'M':
+            vector_y.append(1)
+        else:
+            vector_y.append(0)
         
         for i, char in enumerate(user1['zip_code']):
             if user1['zip_code'][i] == user2['zip_code'][i]:
@@ -68,9 +110,24 @@ class UserSimilarity:
                 vector_y.append(1)
             else:
                 for j in range(i, len(user1['zip_code'])):
-                    vector_x.append(0)
+                    vector_x.append(1)
                     vector_y.append(0)
                 break
+        
+        """
+        for char in user1['zip_code']:
+            vector_x.append(ord(char))
+                
+        for char in user2['zip_code']:
+            vector_y.append(ord(char))
+            
+        if len(user1['zip_code']) > len(user2['zip_code']):
+            for i in range(0, len(user1['zip_code']) - len(user2['zip_code'])):
+                vector_y.append(0)
+        elif len(user2['zip_code']) > len(user1['zip_code']):
+            for i in range(0, len(user2['zip_code']) - len(user1['zip_code'])):
+                vector_x.append(0)
+        """
         
         """
         if user1['zip_code'] == user2['zip_code']:

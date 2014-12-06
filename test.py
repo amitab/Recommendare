@@ -1,3 +1,4 @@
+"""
 import datetime
 
 from hypertarget import Hypertarget
@@ -9,6 +10,7 @@ b = datetime.datetime.now()
 
 c = b - a
 print "Time Taken: " + str(c.microseconds)
+"""
 
 """
 from user_wrapper import UserWrapper
@@ -23,3 +25,5 @@ data = {
 uw.rate_movie(data)
 print ht.recommender.recommend(479, 100)
 """
+for i, char in enumerate('1324AND'):
+    print ord(char)
