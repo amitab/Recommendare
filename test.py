@@ -25,5 +25,13 @@ data = {
 uw.rate_movie(data)
 print ht.recommender.recommend(479, 100)
 """
-for i, char in enumerate('1324AND'):
-    print ord(char)
+import datetime
+from hypertarget import Hypertarget
+ht = Hypertarget()
+
+a = datetime.datetime.now()
+print ht.recommender.recommend(47, 10)
+b = datetime.datetime.now()
+
+c = b - a
+print "Time Taken: " + str(c.microseconds)

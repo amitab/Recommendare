@@ -70,14 +70,24 @@ class Recommendare:
         recommendations = []
 
         for movie in movies_list:
-            num = movies_list[movie]['slope_rating']
-            den = 1
+            num = 0
+            den = 0
 
             for neighbour in movies_list[movie]['neighbours']:
                 num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
                 den += neighbour['neighbour_similarity']
+                
+            if den == 0:
+                predicted_rating = 0
+            else:
+                predicted_rating = num / float(den)
+            
+            if predicted_rating == 0:
+                predicted_rating = movies_list[movie]['slope_rating']
+            else:
+                predicted_rating = (predicted_rating + movies_list[movie]['slope_rating']) / float(2)
 
-            recommendations.append((movie, num / float(den)))
+            recommendations.append((movie, predicted_rating))
 
 
         return sorted(recommendations, key = itemgetter(1), reverse = True)[:count]

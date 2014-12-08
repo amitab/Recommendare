@@ -232,11 +232,15 @@ class UserSimilarity:
         except:
             return False
 
-    def get_user_movies(self, user_id):
+    def get_user_movies(self, user_id, rating = None):
         movies = []
         ratings = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
         for movie_id in ratings.keys():
-            movies.append(movie_id)
+            if rating != None:
+                if ratings[movie_id]['rating'] >= rating:
+                    movies.append(movie_id)
+            else:
+                movies.append(movie_id)
 
         return movies
 
@@ -245,7 +249,7 @@ class UserSimilarity:
         neighbours = self.find_k_nearest(user_id, k)
         movies = self.get_user_movies(user_id)
         for index, neighbour in enumerate(neighbours):
-            neighbours[index]['movies'] = self.get_user_movies(neighbours[index]['user_id'])
+            neighbours[index]['movies'] = self.get_user_movies(neighbours[index]['user_id'], 3)
             neighbours[index]['movies'] = list(set(neighbours[index]['movies']).difference(set(movies)))
 
         return neighbours
