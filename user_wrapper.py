@@ -1,47 +1,17 @@
-from pymongo import MongoClient
 import time
-import config
-from slopeone import SlopeOne
+import common
 
-class UserWrapper:
-    def __init__(self, db = None):
-        if db == None:
-            client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.recommender
-        else:
-            self.db = db
-
-        self.slope_one = SlopeOne(self.db)
-
-        data = self.db.users.aggregate([{
-            '$group': {
-                '_id': 0,
-                'max': {'$max': '$age'},
-                'min': {'$min': '$age'}
-            } }]).next()
-        self.max_user_age, self.min_user_age = data['max'], data['min']
-
-        self.occupations = ['administrator', 'artist', 'doctor', 'educator', 'engineer', 'entertainment', 'executive', 'healthcare', 'homemaker', 'lawyer', 'librarian', 'marketing', 'none', 'other', 'programmer', 'retired', 'salesman', 'scientist', 'student', 'technician', 'writer']
-        self.genres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Disaster', 'Documentary', 'Drama', 'Eastern', 'Erotic', 'Family', 'Fan Film', 'Fantasy', 'Film Noir', 'Foreign', 'History', 'Holiday', 'Horror', 'Indie', 'Music', 'Musical', 'Mystery', 'Neo-noir', 'Road Movie', 'Romance', 'Science Fiction', 'Short', 'Sport', 'Sporting Event', 'Sports Film', 'Suspense', 'TV movie', 'Thriller', 'War', 'Western']
-        self.genders = ['M', 'F']
-
+class UserWrapper(object):
     def get_user(self, user_id):
         user_id = int(user_id)
-        user = self.db.users.find_one({'id': user_id}, {'_id': 0})
-        
-        return user
-
-    def get_base_user_vector(self):
-        user = [1, 1]
-        user.extend([1 for x in self.occupations])
-        user.extend([1 for x in self.genres])
+        user = common.users.find_one({'id': user_id}, {'_id': 0})
         return user
 
     def get_user_vector(self, user):
-        vector = [self.normalize(user['age'], self.max_user_age, self.min_user_age, 1, 0)]
-        vector.extend([1 if x == user['sex'] else 0 for x in self.genders])
-        vector.extend([1 if x == user['occupation'] else 0 for x in self.occupations])
-        vector.extend([1 if x in user['likes'] else 0 for x in self.genres])
+        vector = [self.normalize(user['age'], common.user_age_range['max'], common.user_age_range['min'], 1, 0)]
+        vector.extend([1 if x == user['sex'] else 0 for x in common.metadata['genders']])
+        vector.extend([1 if x == user['occupation'] else 0 for x in common.metadata['occupations']])
+        vector.extend([1 if x in user['likes'] else 0 for x in common.metadata['genres']])
         return vector
 
     def normalize(self, old_value, old_max, old_min, new_max, new_min):
@@ -55,7 +25,7 @@ class UserWrapper:
         return new_value
 
     def get_next_id(self):
-        max_id = self.db.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
+        max_id = common.users.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
         return int(max_id) + 1
 
     def register_user(self, data):
@@ -67,7 +37,7 @@ class UserWrapper:
             'zip_code': data['zip_code'],
             'likes': data.get('likes', [])
         }
-        self.db.users.insert(user)
+        common.users.insert(user)
         return data
 
     def rate_movie(self, user_id, movie_id, rating):
@@ -76,16 +46,16 @@ class UserWrapper:
             'timestamp': time.time()
         }
         key = 'ratings.' + str(movie_id)
-        self.db.users.update({'id': user_id}, {'$set': {key: new_rating}})
+        scommon.users.update({'id': user_id}, {'$set': {key: new_rating}})
         return
 
     def get_user_rating_for(self, user_id, movie_id):
-        rating = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
+        rating = common.users.find_one({'id': user_id}, {'_id': 0})['ratings']
         return rating[movie_id]['rating']
 
     def get_user_movies(self, user_id, rating = None):
         movies = []
-        ratings = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
+        ratings = common.users.find_one({'id': user_id}, {'_id': 0})['ratings']
         for movie_id in ratings.keys():
             if rating != None:
                 if ratings[movie_id]['rating'] >= rating:

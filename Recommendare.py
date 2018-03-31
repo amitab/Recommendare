@@ -1,29 +1,21 @@
 import time
-from multiprocessing.pool import ThreadPool as Pool
-from pymongo import MongoClient
 from operator import itemgetter
 
-import config
+import common
 from usersimilarity import UserSimilarity
 from slopeone import SlopeOne
 from user_wrapper import UserWrapper
 
 class Recommendare:
-    def __init__(self, db = None):
-        if db == None:
-        
-            client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.recommender
-        
-        else:
-            self.db = db
+    def __init__(self):
+        self.user_similarity = UserSimilarity()
+        self.user_interface  = UserWrapper()
+        self.slope_one = SlopeOne()
 
-        self.user_similarity = UserSimilarity(self.db)
-        self.user_interface  = UserWrapper(self.db)
-        self.slope_one = SlopeOne(self.db)
-
-        self.pool = Pool(processes = 10)
         self.recommended_movies = {}
+
+    def gather(self, user_id, knn=3):
+        neighbours = self.user_similarity.find_k_nearest(user_id, knn)
 
     def user_prediction(self, user_id, movie, neighbour):
         if not movie in self.recommended_movies.keys():
@@ -51,14 +43,6 @@ class Recommendare:
             all_movies = temp
         else:
             all_movies = set.union(*all_movies)
-        
-        # for neighbour in neighbours:
-        #     for n_movie in neighbour['movies']:
-        #         if n_movie in all_movies:
-        #             self.pool.apply_async(self.user_prediction, (user_id, n_movie, neighbour))
-
-        # self.pool.close()
-        # self.pool.join()
 
         for neighbour in neighbours:
             for n_movie in neighbour['movies']:

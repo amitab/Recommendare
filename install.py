@@ -5,6 +5,8 @@ import json
 import pyprind
 import urllib2
 
+import common
+
 from collections import defaultdict
 from pymongo import MongoClient
 from usersimilarity import UserSimilarity
@@ -17,8 +19,7 @@ try:
 except:
     TMDB_PRESENT = False
 
-config = json.load(open('.config'))
-tmdb.API_KEY = config['tmdb_api_key']
+tmdb.API_KEY = common.tmdb_key
 errors = []
 
 TMDB_CACHE_PATH = 'data/tmdb_cache.json'
@@ -159,27 +160,29 @@ def finalize():
     meta['zip_codes'] = list(meta['zip_codes'])
     meta['genders'] = list(meta['genders'])
 
-    client = MongoClient(config['host'], config['port'])
-    print "Dropping database {}".format(config['database'])
-    client.drop_database(config['database'])
+    slope = SlopeOne()
+    similarity = UserSimilarity()
 
-    print "Importing Users into {}".format(config['collections']['users'])
-    client[config['database']][config['collections']['users']].insert_many(users.values())
+    dev = slope.get_deviation_matrix()
+    sim = similarity.get_similarity_matrix()
 
-    print "Importing Movies into {}".format(config['collections']['movies'])
-    client[config['database']][config['collections']['movies']].insert_many(movies.values())
+    print "Dropping database {}".format(common.database.name)
+    common.client.drop_database(common.database.name)
 
-    print "Importing Metadata into {}".format(config['collections']['meta'])
-    client[config['database']][config['collections']['meta']].insert_many([meta])
+    print "Importing Users into {}".format(common.users.name)
+    common.users.insert_many(users.values())
 
-    slope = SlopeOne(client[config['database']])
-    similarity = UserSimilarity(client[config['database']])
+    print "Importing Movies into {}".format(common.movies.name)
+    common.movies.insert_many(movies.values())
 
-    print "Importing Deviation Matrix into {}".format(config['collections']['deviations'])
-    client[config['database']][config['collections']['deviations']].insert_many(slope.get_deviation_matrix())
+    print "Importing Metadata into {}".format(common.meta.name)
+    common.meta.insert_many([meta])
 
-    print "Importing User Similarity Matrix into {}".format(config['collections']['user_similarity'])
-    client[config['database']][config['collections']['user_similarity']].insert_many(similarity.get_similarity_matrix())
+    print "Importing Deviation Matrix into {}".format(common.deviations.name)
+    common.deviations.insert_many(dev.values())
+
+    print "Importing User Similarity Matrix into {}".format(common.user_similarity.name)
+    common.user_similarity.insert_many(sim.values())
 
 def prepare_parser():
     import argparse

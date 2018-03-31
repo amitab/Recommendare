@@ -114,7 +114,7 @@ h.register_user({
 To update a users likes:
 ```
 h = Hypertarget()
-h.update_user_like(
+h.update_user_likes(
     1         # user id
     ['Drama'] # new likes
 )
