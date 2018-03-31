@@ -7,7 +7,7 @@ class UserWrapper:
     def __init__(self, db = None):
         if db == None:
             client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.hypertarget_ads
+            self.db = client.recommender
         else:
             self.db = db
 
@@ -64,18 +64,19 @@ class UserWrapper:
             'sex': data['sex'],
             'occupation': data['occupation'],
             'id': self.get_next_id(),
-            'zip_code': data['zip_code']
+            'zip_code': data['zip_code'],
+            'likes': data.get('likes', [])
         }
         self.db.users.insert(user)
+        return data
 
-    def rate_movie(self, data):
-        self.slope_one.update_deviation(data)
+    def rate_movie(self, user_id, movie_id, rating):
         new_rating = {
-            'rating': data['rating'],
+            'rating': rating,
             'timestamp': time.time()
         }
-        key = 'ratings.' + str(data['movie_id'])
-        self.db.users.update({'id': data['user_id']}, {'$set': {key: new_rating}})
+        key = 'ratings.' + str(movie_id)
+        self.db.users.update({'id': user_id}, {'$set': {key: new_rating}})
         return
 
     def get_user_rating_for(self, user_id, movie_id):

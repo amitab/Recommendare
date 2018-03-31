@@ -1,6 +1,11 @@
 from pymongo import MongoClient
-
 import config
+
+try:
+    import tmdbsimple as tmdb
+    TMDB_PRESENT = True
+except:
+    TMDB_PRESENT = False
 
 class MovieWrapper:
 
@@ -8,7 +13,7 @@ class MovieWrapper:
         if db == None:
         
             client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.hypertarget_ads
+            self.db = client.recommender
         
         else:
             self.db = db
@@ -34,3 +39,7 @@ class MovieWrapper:
             return movie
         except:
             return None
+
+    def get_next_id(self):
+        max_id = self.db.movies.find({},{'id':1, '_id':0}).sort([('id', -1)]).limit(1)[0]['id']
+        return int(max_id) + 1

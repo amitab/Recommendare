@@ -12,7 +12,7 @@ class MovieSimilarity:
         if db == None:
         
             client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.hypertarget_ads
+            self.db = client.recommender
         
         else:
             self.db = db

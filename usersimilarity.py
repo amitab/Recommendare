@@ -10,7 +10,7 @@ class UserSimilarity:
     def __init__(self, db = None):
         if db == None:
             client = MongoClient(config.db_config['host'], config.db_config['port'])
-            self.db = client.hypertarget_ads
+            self.db = client.recommender
         else:
             self.db = db
             
@@ -29,10 +29,13 @@ class UserSimilarity:
         else:
             current_user = user
 
-        similar_users = {}
+        similar_users = []
         for user in self.db.users.find():
             if user['id'] != user_id:
-                similar_users[str(user['id'])] = self.find_users_similarity(current_user, user)
+                similar_users.append({
+                    'user_id': user['id'],
+                    'similarity': self.find_users_similarity(current_user, user)
+                })
 
         return similar_users
 
@@ -49,17 +52,16 @@ class UserSimilarity:
             self.db.user_similarity.update({'user_id': user}, {'$set': {key : similarity[user]}})
 
     def find_k_nearest(self, user_id, k):
-        try:
-            similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
-            neighbours = []
-            for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
-                neighbours.append({
-                    'user_id': int(key),
-                    'similarity': value
-                })
-            return neighbours
-        except:
-            return False
+        return [
+            x['similarity'] for x in
+            self.db.user_similarity.aggregate([
+                { '$match': { 'user_id': user_id } },
+                { '$unwind': '$similarity' },
+                { '$sort': {'similarity.similarity': -1} },
+                { '$limit': k },
+                { '$project': {'similarity':1, '_id': 0} }
+            ])
+        ]
 
     def get_neighbours_movies(self, user_id, k = 3):
         neighbours = self.find_k_nearest(user_id, k)
@@ -70,8 +72,13 @@ class UserSimilarity:
         return neighbours
 
     def register_user(self, data):
-        self.user_interface.update_user_similarity(
-            self.user_interface.register_user(data))
+        self.update_user_similarity(self.user_interface.register_user(data))
+
+    def update_user_likes(self, user_id, likes):
+        data = self.db.users.find_one({'id': user_id}, {'_id': 0})
+        likes = list(set(data['likes'] + likes))
+        self.db.users.update_one({'id': user_id}, {'$set': {'likes': likes }})
+        self.update_user_similarity(data)
 
 # All methods below are batch methods
 
