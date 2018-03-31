@@ -1,0 +1,13 @@
+{
+    "tmdb_api_key": "",
+    "database": "recommender",
+    "host": "localhost",
+    "port": 27017,
+    "collections": {
+        "deviations": "deviations",
+        "movies": "movies",
+        "users": "users",
+        "user_similarity": "user_similarity",
+        "meta": "meta"
+    }
+}

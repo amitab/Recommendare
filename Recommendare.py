@@ -6,9 +6,9 @@ from operator import itemgetter
 import config
 from usersimilarity import UserSimilarity
 from slopeone import SlopeOne
+from user_wrapper import UserWrapper
 
 class Recommendare:
-
     def __init__(self, db = None):
         if db == None:
         
@@ -19,6 +19,7 @@ class Recommendare:
             self.db = db
 
         self.user_similarity = UserSimilarity(self.db)
+        self.user_interface  = UserWrapper(self.db)
         self.slope_one = SlopeOne(self.db)
 
         self.pool = Pool(processes = 10)
@@ -33,12 +34,12 @@ class Recommendare:
 
         self.recommended_movies[movie]['neighbours'].append({
             'neighbour_id': neighbour['user_id'],
-            'neighbour_rating': self.user_similarity.get_user_rating_for(neighbour['user_id'], movie),
+            'neighbour_rating': self.user_interface.get_user_rating_for(neighbour['user_id'], movie),
             'neighbour_similarity': neighbour['similarity']
         })
 
-    def rate_neighbours_movies(self, user_id, count):
-        neighbours = self.user_similarity.get_neighbours_movies(user_id, k = 3)
+    def rate_neighbours_movies(self, user_id, count, knn):
+        neighbours = self.user_similarity.get_neighbours_movies(user_id, knn)
         all_movies = []
         
         for neighbour in neighbours:
@@ -51,21 +52,27 @@ class Recommendare:
         else:
             all_movies = set.union(*all_movies)
         
+        # for neighbour in neighbours:
+        #     for n_movie in neighbour['movies']:
+        #         if n_movie in all_movies:
+        #             self.pool.apply_async(self.user_prediction, (user_id, n_movie, neighbour))
+
+        # self.pool.close()
+        # self.pool.join()
+
         for neighbour in neighbours:
             for n_movie in neighbour['movies']:
                 if n_movie in all_movies:
-                    self.pool.apply_async(self.user_prediction, (user_id, n_movie, neighbour))
+                    self.user_prediction(user_id, n_movie, neighbour)
 
-        self.pool.close()
-        self.pool.join()
 
-    def get_recommended_movies(self, user_id, count):
+    def get_recommended_movies(self, user_id, count, knn):
         if len(self.recommended_movies) == 0:
-            self.rate_neighbours_movies(user_id, count)
+            self.rate_neighbours_movies(user_id, count, knn)
             return self.recommended_movies
 
-    def recommend(self, user_id, count):
-        movies_list = self.get_recommended_movies(user_id, count)
+    def recommend(self, user_id, count, knn):
+        movies_list = self.get_recommended_movies(user_id, count, knn)
 
         recommendations = []
 

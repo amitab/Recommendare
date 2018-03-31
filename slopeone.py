@@ -8,6 +8,23 @@ class SlopeOne:
             self.deviation_matrix = {}
             self.db = db
 
+    # Just with item IDs
+    def calculate_devation(self, item1, item2):
+        data = self.db.users.find({'$and': [
+            {'ratings.{}'.format(item1): {'$exists': True}},
+            {'ratings.{}'.format(item2): {'$exists': True}}
+        ]}, {'_id': 0, 'ratings': 1})
+
+        num = 0
+        den = data.count()
+        if den == 0:
+            return { 'deviation': 0, 'cardinality': 0 }
+        for user in data:
+            num += user['ratings'][item1]['rating'] - user['ratings'][item2]['rating']
+
+        return { 'deviation': num / float(den), 'cardinality': den }
+
+    # Called using vectors obtained from self.get_movie_vectors
     def deviation(self, item1, item2):
         # finding common users who rated the movie
         keys = list(set(item1.keys()) & set(item2.keys()))
@@ -25,7 +42,6 @@ class SlopeOne:
         }
 
     def get_movie_vectors(self):
-
         user_count = self.db.users.count()
         print "Preparing movie vectors ( user count: %d )" % (user_count)
         movies = {}
@@ -36,12 +52,11 @@ class SlopeOne:
             for movie in user['ratings']:
                 if not movie in movies.keys():
                     movies[movie] = {}
-                    movies[movie][user['id']] = user['ratings'][movie]['rating']
-                    my_prbar.update()
-                    return movies
+                movies[movie][user['id']] = user['ratings'][movie]['rating']
+            my_prbar.update()
+        return movies
 
     def calculate_deviation_matrix(self):
-
         deviation_matrix = {}
         movies = self.get_movie_vectors()
 
@@ -57,40 +72,40 @@ class SlopeOne:
             for j in movies:
                 if i != j:
                     deviation_matrix[i]['deviations'][j] = self.deviation(movies[i], movies[j])
-                    my_prbar.update()
+            my_prbar.update()
 
         self.deviation_matrix = deviation_matrix
 
-    def dump_deviation_matrix(self):
+    def get_deviation_matrix(self):
         if len(self.deviation_matrix) == 0:
             self.calculate_deviation_matrix()
-            with open('data/deviation.json', 'w') as outfile:
+        return self.deviation_matrix.values()
+
+    def dump_deviation_matrix(self, path):
+        if len(self.deviation_matrix) == 0:
+            self.calculate_deviation_matrix()
+            with open(path, 'w') as outfile:
                 json.dump(self.deviation_matrix.values(), outfile)
-                print "deviation.json written to data/deviation.json"
+                print "deviation.json written to {}".format(path)
 
         # sudo mongoimport --db hypertarget_ads --collection deviations --type json --file deviation.json --jsonArray
 
     def predict_rating(self, user_id, movie_id):
-        try:
+        user_ratings = self.db.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
+        movie_deviations = self.db.deviations.find_one({'movie_id': movie_id}, {'_id': 0, 'deviations': 1})['deviations']
 
-            user_ratings = self.db.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
-            movie_deviations = self.db.deviations.find_one({'movie_id': movie_id}, {'_id': 0, 'deviations': 1})['deviations']
+        num = 0
+        den = 0
 
-            num = 0
-            den = 0
+        for movie in user_ratings:
+            if int(movie) != movie_id:
+                num += (movie_deviations[movie]['deviation'] + user_ratings[movie]['rating']) * movie_deviations[movie]['cardinality']
+                den += movie_deviations[movie]['cardinality']
 
-            for movie in user_ratings:
-                if int(movie) != movie_id:
-                    num += (movie_deviations[movie]['deviation'] + user_ratings[movie]['rating']) * movie_deviations[movie]['cardinality']
-                    den += movie_deviations[movie]['cardinality']
-
-            if den == 0:
-                return 0
-            else:
-                return num / float(den)
-
-        except:
-            return False
+        if den == 0:
+            return 0
+        else:
+            return num / float(den)
 
     def update_deviation(self, data):
         
@@ -116,5 +131,3 @@ class SlopeOne:
 
             key = 'deviations.' + str(data['movie_id'])
             self.db.deviations.update({'movie_id': int(movie)}, {'$set': {key : {'deviation': -new_dev, 'cardinality': card + 1}}})
-
-        return

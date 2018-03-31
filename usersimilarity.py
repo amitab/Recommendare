@@ -1,171 +1,27 @@
 import math
 import pyprind
 import json
-
 from pymongo import MongoClient
-
 import config
+from user_wrapper import UserWrapper
+import similarity
 
 class UserSimilarity:
-
     def __init__(self, db = None):
         if db == None:
-        
             client = MongoClient(config.db_config['host'], config.db_config['port'])
             self.db = client.hypertarget_ads
-        
         else:
             self.db = db
             
-        self.max_user_age = self.db.users.find_one({}, {'age': 1, '_id': 0}, sort=[("age", -1)])['age']
+        self.user_interface = UserWrapper(self.db)
         self.user_similarity_matrix = {}
         self.genres = config.genres_list
-    
-    def pearsons_similarity(self, vector_x, vector_y):
-            
-        vx_sum = 0
-        vy_sum = 0
-        vx_sq_sum = 0
-        vy_sq_sum = 0
-        vx_x_vy = 0
-        
-        for i in range(0, len(vector_x)):
-            try:
-                vx_sum += vector_x[i]
-                vy_sum += vector_y[i]
-                
-                vx_sq_sum += vector_x[i] ** 2
-                vy_sq_sum += vector_y[i] ** 2
-                
-                vx_x_vy += vector_x[i] * vector_y[i]
-            except:
-                print vector_x
-                print vector_y
-                exit()
-            
-        similarity = vx_x_vy - (vx_sum * vy_sum) / float(len(vector_x))
-        den = math.sqrt(vx_sq_sum - (vx_sum ** 2)/float(len(vector_x))) * math.sqrt(vy_sq_sum - (vy_sum ** 2)/float(len(vector_x)))
-        
-        if den == 0:
-            return 0
-        else:
-            return similarity / float(den)
-    
-    def cosine_similarity(self, vector_x, vector_y):
-        dot_pdt = 0
-        length_x = 0
-        length_y = 0
-
-        for i in range(len(vector_x)):
-            dot_pdt += vector_x[i] * vector_y[i]
-            length_x += vector_x[i] ** 2
-            length_y += vector_y[i] ** 2
-
-        length_x = math.sqrt(length_x)
-        length_y = math.sqrt(length_y)
-        den = length_x * length_y
-
-        if den == 0:
-            return 0
-        else:
-            return dot_pdt / float(den)
-
-    def change_range(self, old_value, old_max, old_min, new_max, new_min):
-        old_range = (old_max - old_min)
-        if old_range == 0:
-            new_value = new_min
-        else:
-            new_range = (new_max - new_min)
-            new_value = (((old_value - old_min) * new_range) / float(old_range)) + new_min
-
-        return new_value
-
-    def build_user_vectors(self, user1, user2):
-
-        vector_x = [ self.change_range(user1['age'], self.max_user_age, 0, 1, 0) ]
-        vector_y = [ self.change_range(user2['age'], self.max_user_age, 0, 1, 0) ]
-
-        """
-        if user1['sex'] == user2['sex']:
-            vector_x.extend([1, 0])
-            vector_y.extend([1, 0])
-        else:
-            vector_x.extend([0, 1])
-            vector_y.extend([1, 0])
-        """
-            
-        if user1['sex'] == 'M':
-            vector_x.append(1)
-        else:
-            vector_x.append(0)
-            
-        if user2['sex'] == 'M':
-            vector_y.append(1)
-        else:
-            vector_y.append(0)
-        
-        for i, char in enumerate(user1['zip_code']):
-            if user1['zip_code'][i] == user2['zip_code'][i]:
-                vector_x.append(1)
-                vector_y.append(1)
-            else:
-                for j in range(i, len(user1['zip_code'])):
-                    vector_x.append(1)
-                    vector_y.append(0)
-                break
-        
-        """
-        for char in user1['zip_code']:
-            vector_x.append(ord(char))
-                
-        for char in user2['zip_code']:
-            vector_y.append(ord(char))
-            
-        if len(user1['zip_code']) > len(user2['zip_code']):
-            for i in range(0, len(user1['zip_code']) - len(user2['zip_code'])):
-                vector_y.append(0)
-        elif len(user2['zip_code']) > len(user1['zip_code']):
-            for i in range(0, len(user2['zip_code']) - len(user1['zip_code'])):
-                vector_x.append(0)
-        """
-        
-        """
-        if user1['zip_code'] == user2['zip_code']:
-            vector_x.extend([1, 0])
-            vector_y.extend([1, 0])
-        else:
-            vector_x.extend([0, 1])
-            vector_y.extend([1, 0])
-        """
-
-        if user1['occupation'] == user2['occupation']:
-            vector_x.extend([1, 0])
-            vector_y.extend([1, 0])
-        else:
-            vector_x.extend([0, 1])
-            vector_y.extend([1, 0])
-            
-        for genre in self.genres:
-        
-            if genre in user1['likes']:
-                vector_x.append(1)
-            else:
-                vector_x.append(0)
-                
-            if genre in user2['likes']:
-                vector_y.append(1)
-            else:
-                vector_y.append(0)
-                
-
-        return {
-            'user1': vector_x,
-            'user2': vector_y
-        }
 
     def find_users_similarity(self, user1, user2):
-        users = self.build_user_vectors(user1, user2)
-        return self.cosine_similarity(users['user1'], users['user2'])
+        x = self.user_interface.get_user_vector(user1)
+        y = self.user_interface.get_user_vector(user2)
+        return similarity.cosine_similarity(x, y)
 
     def find_similar_users(self, user_id = None, user = None):
         if user_id != None:
@@ -180,8 +36,46 @@ class UserSimilarity:
 
         return similar_users
 
-    def build_user_similarity(self):
+    def update_user_similarity(self, user_data):
+        similarity = self.find_similar_users(user = user_data)
+        similarity_obj = {'user_id': user_data['id'], 'similarity': similarity}
 
+        # create a new similarity list for this guy
+        self.db.user_similarity.insert(similarity_obj)
+        key = 'similarity.' + str(user_data['id'])
+
+        # update this persons similarity in the lists of all the other users
+        for user in similarity:
+            self.db.user_similarity.update({'user_id': user}, {'$set': {key : similarity[user]}})
+
+    def find_k_nearest(self, user_id, k):
+        try:
+            similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
+            neighbours = []
+            for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
+                neighbours.append({
+                    'user_id': int(key),
+                    'similarity': value
+                })
+            return neighbours
+        except:
+            return False
+
+    def get_neighbours_movies(self, user_id, k = 3):
+        neighbours = self.find_k_nearest(user_id, k)
+        movies = self.user_interface.get_user_movies(user_id)
+        for index, neighbour in enumerate(neighbours):
+            neighbours[index]['movies'] = self.user_interface.get_user_movies(neighbours[index]['user_id'], 3)
+            neighbours[index]['movies'] = list(set(neighbours[index]['movies']).difference(set(movies)))
+        return neighbours
+
+    def register_user(self, data):
+        self.user_interface.update_user_similarity(
+            self.user_interface.register_user(data))
+
+# All methods below are batch methods
+
+    def build_user_similarity(self):
         user_count = self.db.users.count()
         print "Preparing user similarity matrix ( user count: %d )" % (user_count)
 
@@ -195,66 +89,16 @@ class UserSimilarity:
             }
             my_prbar.update()
 
-    def update_user_similarity(self, user_data):
-
-        similarity = self.find_similar_users(user = user_data)
-        similarity_obj = {'user_id': user_data['id'], 'similarity': similarity}
-
-        # create a new similarity list for this guy
-        self.db.user_similarity.insert(similarity_obj)
-        key = 'similarity.' + str(user_data['id'])
-
-        # update this persons similarity in the lists of all the other users
-        for user in similarity:
-            self.db.user_similarity.update({'user_id': user}, {'$set': {key : similarity[user]}})
-
-
-    def dump_similarity_matrix(self):
+    def get_similarity_matrix(self):
         if len(self.user_similarity_matrix) == 0:
             self.build_user_similarity()
-            with open('data/user_similarity.json', 'w') as outfile:
+        return self.user_similarity_matrix.values()
+
+    def dump_similarity_matrix(self, path):
+        if len(self.user_similarity_matrix) == 0:
+            self.build_user_similarity()
+            with open(path, 'w') as outfile:
                 json.dump(self.user_similarity_matrix.values(), outfile)
-                print "user_similarity.json written to data/user_similarity.json"
+                print "user_similarity.json written to {}".format(path)
 
         # sudo mongoimport --db hypertarget_ads --collection user_similarity --type json --file user_similarity.json --jsonArray
-
-    def find_k_nearest(self, user_id, k):
-        try:
-            similarity = self.db.user_similarity.find_one({'user_id': user_id}, {'_id': 0, 'similarity': 1})['similarity']
-            neighbours = []
-            for key, value in sorted(similarity.items(), key = lambda x:x[1], reverse = True)[:k]:
-                neighbours.append({
-                    'user_id': int(key),
-                    'similarity': value
-                })
-                # print str(key) + " " + str(value)
-            return neighbours
-        except:
-            return False
-
-    def get_user_movies(self, user_id, rating = None):
-        movies = []
-        ratings = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
-        for movie_id in ratings.keys():
-            if rating != None:
-                if ratings[movie_id]['rating'] >= rating:
-                    movies.append(movie_id)
-            else:
-                movies.append(movie_id)
-
-        return movies
-
-    def get_neighbours_movies(self, user_id, k = 3):
-
-        neighbours = self.find_k_nearest(user_id, k)
-        movies = self.get_user_movies(user_id)
-        for index, neighbour in enumerate(neighbours):
-            neighbours[index]['movies'] = self.get_user_movies(neighbours[index]['user_id'], 3)
-            neighbours[index]['movies'] = list(set(neighbours[index]['movies']).difference(set(movies)))
-
-        return neighbours
-
-    def get_user_rating_for(self, user_id, movie_id):
-
-        rating = self.db.users.find_one({'id': user_id}, {'_id': 0})['ratings']
-        return rating[movie_id]['rating']
