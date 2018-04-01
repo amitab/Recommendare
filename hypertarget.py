@@ -34,8 +34,9 @@ class Hypertarget:
         self.similarity.rate_movie(user_id, movie_id, rating)
 
 h = Hypertarget()
-# print h.recommender.serendipity_recommendation(1, 10)
+print h.recommender.serendipity_recommendation(1, 10)
 print h.recommender.fast_recommendation(1, 10)
+print h.recommender.best_recommendation(1, 10)
 """
 [{'movie_id': 408, 'predicted_rating': 4.863125453226976}, {'movie_id': 479, 'predicted_rating': 4.728977741137675}, {'movie_id': 302, 'predicted_rating': 4.713568020818274}, {'movie_id': 896, 'predicted_rating': 4.711029092488058}, {'movie_id': 483, 'predicted_rating': 4.672735713523753}, {'movie_id': 647, 'predicted_rating': 4.672344240251008}, {'movie_id': 520, 'predicted_rating': 4.664003403933434}, {'movie_id': 525, 'predicted_rating': 4.647112880992495}, {'movie_id': 315, 'predicted_rating': 4.629603490311818}, {'movie_id': 430, 'predicted_rating': 4.6045407158577545}]
 """

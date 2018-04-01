@@ -1,6 +1,7 @@
 import time
 import math
 from operator import itemgetter
+from collections import defaultdict
 
 import common
 from usersimilarity import UserSimilarity
@@ -15,6 +16,17 @@ class Recommendare:
 
         self.recommended_movies = {}
 
+    def _recommend_movies_list(self, user_id, neighbours, movies):
+        similarity = {n['user_id']: n['similarity'] for n in neighbours}
+        cosine_ratings = defaultdict(lambda: defaultdict(lambda: 0))
+        for m in movies:
+            cosine_ratings[m['movie_id']]['num'] += similarity[m['user_id']] * m['rating']
+            cosine_ratings[m['movie_id']]['den'] += similarity[m['user_id']]
+        return [{
+            'movie_id': p['movie_id'],
+            'predicted_rating': (p['rating'] + (cosine_ratings[p['movie_id']]['num']/cosine_ratings[p['movie_id']]['den']))/float(2)
+        } for p in self.slope_one.predict_ratings(user_id, movies)]
+
     def serendipity_recommendation(self, user_id, count, knn=3):
         neighbours = self.user_similarity.find_k_nearest(user_id, knn)
         movies = list(common.users.aggregate([
@@ -27,14 +39,6 @@ class Recommendare:
         ]))
 
         return self._recommend_movies_list(user_id, neighbours, movies)
-
-    def _recommend_movies_list(self, user_id, neighbours, movies):
-        similarity = {n['user_id']: n['similarity'] for n in neighbours}
-        cosine_ratings = {m['movie_id'] : similarity[m['user_id']] * m['rating'] for m in movies}
-        return [{
-            'movie_id': p['movie_id'],
-            'predicted_rating': (p['rating'] + cosine_ratings[p['movie_id']])/2
-        } for p in self.slope_one.predict_ratings(user_id, movies)]
 
     def best_recommendation(self, user_id, count, knn=3):
         neighbours = self.user_similarity.find_k_nearest(user_id, knn)
