@@ -19,17 +19,14 @@ class SlopeOne(object):
 
         return { 'deviation': num / float(den), 'cardinality': den }
 
-    def predict_ratings(self, user_id, neighbour_movies):
+    def predict_ratings(self, user_id, movies):
         user_ratings = common.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
-        deviations = common.deviations.find({
-            'movie_id': {
-                '$in': [m for m in neighbour_movies[n_m] for n_m in neighbour_movies]}
-            }, {'_id': 0})
+        deviations = common.deviations.find({'movie_id': {'$in': [m['movie_id'] for m in movies]}}, {'_id': 0})
 
-        return {
-            d['movie_id']: self._predict_rating(user_id, d['movie_id'], d['deviations'], user_ratings)
-            for d in deviations
-        }
+        return [{
+            'movie_id': d['movie_id'],
+            'rating': self._predict_rating(user_id, d['movie_id'], d['deviations'], user_ratings)
+        } for d in deviations]
 
     def predict_rating(self, user_id, movie_id):
         user_ratings = common.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
@@ -41,10 +38,11 @@ class SlopeOne(object):
         num = 0
         den = 0
 
-        for movie in user_ratings:
-            if int(movie) != movie_id:
-                num += (movie_deviations[movie]['deviation'] + user_ratings[movie]['rating']) * movie_deviations[movie]['cardinality']
-                den += movie_deviations[movie]['cardinality']
+        for r in user_ratings:
+            key = str(r['movie_id'])
+            if r['movie_id'] != movie_id:
+                num += (movie_deviations[key]['deviation'] + r['rating']) * movie_deviations[key]['cardinality']
+                den += movie_deviations[key]['cardinality']
 
         if den == 0:
             return 0
@@ -96,10 +94,11 @@ class SlopeOne(object):
         my_prbar = pyprind.ProgBar(user_count)
 
         for user in common.users.find():
-            for movie in user['ratings']:
-                if not movie in movies.keys():
-                    movies[movie] = {}
-                movies[movie][user['id']] = user['ratings'][movie]['rating']
+            for rating in user['ratings']:
+                key = str(rating['movie_id'])
+                if not key in movies:
+                    movies[key] = {}
+                movies[key][user['id']] = rating['rating']
             my_prbar.update()
         return movies
 

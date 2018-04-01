@@ -1,4 +1,5 @@
 import time
+import math
 from operator import itemgetter
 
 import common
@@ -14,71 +15,48 @@ class Recommendare:
 
         self.recommended_movies = {}
 
-    def gather(self, user_id, knn=3):
+    def serendipity_recommendation(self, user_id, count, knn=3):
         neighbours = self.user_similarity.find_k_nearest(user_id, knn)
+        movies = list(common.users.aggregate([
+            {'$match': {'id': {'$in': [x['user_id'] for x in neighbours]}}},
+            {'$unwind': '$ratings'},
+            {'$sort': {'ratings.rating': -1}},
+            {'$limit': count * 10},
+            {'$sample': {'size': count}},
+            {'$project': {'_id': 0, 'movie_id': '$ratings.movie_id', 'rating': '$ratings.rating', 'user_id': '$id'}}
+        ]))
 
-    def user_prediction(self, user_id, movie, neighbour):
-        if not movie in self.recommended_movies.keys():
-            self.recommended_movies[movie] = {
-                'slope_rating': self.slope_one.predict_rating(user_id, int(movie)),
-                'neighbours': []
-            }
+        return self._recommend_movies_list(user_id, neighbours, movies)
 
-        self.recommended_movies[movie]['neighbours'].append({
-            'neighbour_id': neighbour['user_id'],
-            'neighbour_rating': self.user_interface.get_user_rating_for(neighbour['user_id'], movie),
-            'neighbour_similarity': neighbour['similarity']
-        })
+    def _recommend_movies_list(self, user_id, neighbours, movies):
+        similarity = {n['user_id']: n['similarity'] for n in neighbours}
+        cosine_ratings = {m['movie_id'] : similarity[m['user_id']] * m['rating'] for m in movies}
+        return [{
+            'movie_id': p['movie_id'],
+            'predicted_rating': (p['rating'] + cosine_ratings[p['movie_id']])/2
+        } for p in self.slope_one.predict_ratings(user_id, movies)]
 
-    def rate_neighbours_movies(self, user_id, count, knn):
-        neighbours = self.user_similarity.get_neighbours_movies(user_id, knn)
-        all_movies = []
-        
-        for neighbour in neighbours:
-            all_movies.append(set(neighbour['movies']))
-        
-        temp = set.intersection(*all_movies)
-        
-        if len(temp) >= count:
-            all_movies = temp
-        else:
-            all_movies = set.union(*all_movies)
+    def best_recommendation(self, user_id, count, knn=3):
+        neighbours = self.user_similarity.find_k_nearest(user_id, knn)
+        movies = list(common.users.aggregate([
+            {'$match': {'id': {'$in': [x['user_id'] for x in neighbours]}}},
+            {'$unwind': '$ratings'},
+            {'$sort': {'ratings.rating': -1}},
+            {'$project': {'_id': 0, 'movie_id': '$ratings.movie_id', 'rating': '$ratings.rating', 'user_id': '$id'}}
+        ]))
+        return sorted(self._recommend_movies_list(user_id, neighbours, movies), key=itemgetter('predicted_rating'), reverse=True)[:count]
 
-        for neighbour in neighbours:
-            for n_movie in neighbour['movies']:
-                if n_movie in all_movies:
-                    self.user_prediction(user_id, n_movie, neighbour)
+    def fast_recommendation(self, user_id, count, knn=3):
+        slicer = math.ceil(count/float(knn))
+        neighbours = self.user_similarity.find_k_nearest(user_id, knn)
+        movies = list(common.users.aggregate([
+            {'$project': {'ratings': {'$slice': ['$ratings', slicer]}, 'id': 1}},
+            {'$match': {'id': {'$in': [x['user_id'] for x in neighbours]}}},
+            {'$unwind': '$ratings'},
+            {'$sort': {'ratings.rating': -1}},
+            {'$project': {'_id': 0, 'movie_id': '$ratings.movie_id', 'rating': '$ratings.rating', 'user_id': '$id'}}
+        ]))
+        return sorted(self._recommend_movies_list(user_id, neighbours, movies), key=itemgetter('predicted_rating'), reverse=True)[:count]
 
-
-    def get_recommended_movies(self, user_id, count, knn):
-        if len(self.recommended_movies) == 0:
-            self.rate_neighbours_movies(user_id, count, knn)
-            return self.recommended_movies
-
-    def recommend(self, user_id, count, knn):
-        movies_list = self.get_recommended_movies(user_id, count, knn)
-
-        recommendations = []
-
-        for movie in movies_list:
-            num = 0
-            den = 0
-
-            for neighbour in movies_list[movie]['neighbours']:
-                num += neighbour['neighbour_similarity'] * neighbour['neighbour_rating']
-                den += neighbour['neighbour_similarity']
-                
-            if den == 0:
-                predicted_rating = 0
-            else:
-                predicted_rating = num / float(den)
-            
-            if predicted_rating == 0:
-                predicted_rating = movies_list[movie]['slope_rating']
-            else:
-                predicted_rating = (predicted_rating + movies_list[movie]['slope_rating']) / float(2)
-
-            recommendations.append((movie, predicted_rating))
-
-
-        return sorted(recommendations, key = itemgetter(1), reverse = True)[:count]
+    def predict_rating(self, user_id, movie_id, knn=3):
+        pass

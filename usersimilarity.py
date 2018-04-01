@@ -44,6 +44,17 @@ class UserSimilarity(object):
             ])
         ]
 
+    # def find_k_nearest_with_movie(self, user_id, movie_id, k):
+    #     users = common.users.find({'ratings.movie_id': movie_id}, {'_id': 0, 'id': 1})
+    #     list(common.user_similarity.aggregate([
+    #         { '$match': { 'user_id': user_id } },
+    #         { '$unwind': '$similarity' },
+    #         {'$match': {'similarity.user_id': {'$in': list(users)}}},
+    #         { '$sort': {'similarity.similarity': -1} },
+    #         { '$limit': k },
+    #         { '$project': {'similarity': '$similarity.similarity', 'user_id': '$similarity.user_id', '_id': 0} }
+    #     ]))
+
     def get_neighbours_movies(self, user_id, k = 3):
         neighbours = self.find_k_nearest(user_id, k)
         movies = self.user_interface.get_user_movies(user_id)

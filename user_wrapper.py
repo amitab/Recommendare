@@ -42,24 +42,26 @@ class UserWrapper(object):
 
     def rate_movie(self, user_id, movie_id, rating):
         new_rating = {
+            'movie_id': movie_id,
             'rating': rating,
             'timestamp': time.time()
         }
-        key = 'ratings.' + str(movie_id)
-        scommon.users.update({'id': user_id}, {'$set': {key: new_rating}})
+        common.users.update({'id': user_id}, {'$push': {'ratings': {'$each': [new_rating], '$sort': {'rating': -1}}}})
         return
 
     def get_user_rating_for(self, user_id, movie_id):
-        rating = common.users.find_one({'id': user_id}, {'_id': 0})['ratings']
-        return rating[movie_id]['rating']
+        rating = common.users.find_one({'id': user_id}, {'ratings': {'$elemMatch': {'movie_id': movie_id}}, '_id': 0})
+        if rating['ratings']:
+            return rating['ratings'][0]['rating']
+        raise Exception("User {} has not rated {}".format(user_id, movie_id))
 
     def get_user_movies(self, user_id, rating = None):
         movies = []
         ratings = common.users.find_one({'id': user_id}, {'_id': 0})['ratings']
-        for movie_id in ratings.keys():
+        for r in ratings:
             if rating != None:
-                if ratings[movie_id]['rating'] >= rating:
-                    movies.append(movie_id)
+                if r['rating'] >= rating:
+                    movies.append(r['movie_id'])
             else:
-                movies.append(movie_id)
+                movies.append(r['movie_id'])
         return movies

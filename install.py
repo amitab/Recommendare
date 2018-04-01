@@ -8,6 +8,7 @@ import urllib2
 import common
 
 from collections import defaultdict
+from operator import itemgetter
 from pymongo import MongoClient
 from usersimilarity import UserSimilarity
 from slopeone import SlopeOne
@@ -23,8 +24,9 @@ tmdb.API_KEY = common.tmdb_key
 errors = []
 
 TMDB_CACHE_PATH = 'data/tmdb_cache.json'
-TMDB_MATCH_PATH = 'data/u.data.tmdb'
+TMDB_MATCH_PATH = 'data/u.item.tmdb'
 TMDB_ERRORS_PATH = 'data/errors.json'
+TMDB_MAPPING = 'https://gist.githubusercontent.com/amitab/7869d7336b80dfc3c4e8/raw/u.item.tmdb'
 
 users = defaultdict(dict)
 movies = defaultdict(dict)
@@ -66,7 +68,7 @@ def load_movie_db(path, with_tmdb=TMDB_PRESENT):
         movies[line[1]] = {
             'id': int(line[0]),
             'name': line[1],
-            'release_date': line[2],
+            'date': line[2],
             'url': line[4],
             'genres': [meta['genres'][i] for i in range(0, 19) if line[5 + i] == "1"]
         }
@@ -79,7 +81,7 @@ def load_movie_db(path, with_tmdb=TMDB_PRESENT):
     genres = [x['name'] for x in tmdb.Genres().movie_list()['genres']]
     meta['genres'] = list(set(genres + meta['genres']))
 
-    tmdb_data = open( path + '/u.movies.tmdb', 'r' )
+    tmdb_data = open( TMDB_MATCH_PATH, 'r' )
     tmdb_reader = csv.reader( tmdb_data , delimiter = "|")
     matches = [(line[1], line[0]) for line in tmdb_reader]
     tmdb_data.close()
@@ -129,7 +131,7 @@ def load_user_db(path):
             'sex': line[2],
             'occupation': line[3],
             'zip_code': line[4],
-            'ratings': {},
+            'ratings': [],
             'likes': []
         }
         meta['genders'].add(line[2])
@@ -142,10 +144,11 @@ def load_ratings(path):
     i_f = open( path + '/u.data', 'r' )
     reader = csv.reader( i_f , delimiter = "\t")
     for line in reader:
-        users[line[0]]['ratings'][line[1]] = {
+        users[line[0]]['ratings'].append({
+            'movie_id': int(line[1]),
             'rating': int(line[2]),
             'timestamp': int(line[3])
-        }
+        })
         if line[2] == '5':
             genres = movies[id_to_movie[line[1]]]['genres']
             try:
@@ -160,11 +163,11 @@ def finalize():
     meta['zip_codes'] = list(meta['zip_codes'])
     meta['genders'] = list(meta['genders'])
 
+    for user in users:
+        users[user]['ratings'] = sorted(users[user]['ratings'], key=itemgetter('rating'), reverse=True)
+
     slope = SlopeOne()
     similarity = UserSimilarity()
-
-    dev = slope.get_deviation_matrix()
-    sim = similarity.get_similarity_matrix()
 
     print "Dropping database {}".format(common.database.name)
     common.client.drop_database(common.database.name)
@@ -177,6 +180,9 @@ def finalize():
 
     print "Importing Metadata into {}".format(common.meta.name)
     common.meta.insert_many([meta])
+
+    dev = slope.get_deviation_matrix()
+    sim = similarity.get_similarity_matrix()
 
     print "Importing Deviation Matrix into {}".format(common.deviations.name)
     common.deviations.insert_many(dev.values())
@@ -202,9 +208,8 @@ if __name__ == '__main__':
         if not os.path.exists('data'):
             os.makedirs('data')
         if not os.path.isfile(TMDB_MATCH_PATH):
-            import pdb; pdb.set_trace()
             print "Loading TMDB match info"
-            filedata = urllib2.urlopen('https://gist.github.com/amitab/7869d7336b80dfc3c4e8')
+            filedata = urllib2.urlopen(TMDB_MAPPING)
             with open(TMDB_MATCH_PATH, 'wb') as f:
                 f.write(filedata.read())
 
