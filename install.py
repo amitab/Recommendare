@@ -181,6 +181,8 @@ def finalize():
     print "Importing Metadata into {}".format(common.meta.name)
     common.meta.insert_many([meta])
 
+    common.initialize()
+
     dev = slope.get_deviation_matrix()
     sim = similarity.get_similarity_matrix()
 

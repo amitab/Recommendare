@@ -13,13 +13,22 @@ movies = database[config['collections']['movies']]
 user_similarity = database[config['collections']['user_similarity']]
 deviations = database[config['collections']['deviations']]
 
-metadata = meta.find({}, {'_id': 0, 'zip_codes': 0}).next()
-user_age_range = users.aggregate([{
-    '$group': {
-        '_id': 0,
-        'max': {'$max': '$age'},
-        'min': {'$min': '$age'}
-    } }]).next()
+metadata = None
+user_age_range = None
+
+def initialize():
+    global metadata
+    global user_age_range
+    metadata = meta.find({}, {'_id': 0, 'zip_codes': 0}).next()
+    user_age_range = users.aggregate([{
+        '$group': {
+            '_id': 0,
+            'max': {'$max': '$age'},
+            'min': {'$min': '$age'}
+        } }]).next()
+
+if len(list(database.list_collections())) != 0:
+    initialize()
 
 def normalize(old_value, old_max, old_min, new_max, new_min):
     old_range = (old_max - old_min)
