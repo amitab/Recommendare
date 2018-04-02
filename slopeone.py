@@ -5,19 +5,28 @@ import common
 class SlopeOne(object):
     # Just with item IDs
     def calculate_devation(self, item1, item2):
-        data = common.users.find({'$and': [
-            {'ratings.{}'.format(item1): {'$exists': True}},
-            {'ratings.{}'.format(item2): {'$exists': True}}
-        ]}, {'_id': 0, 'ratings': 1})
+        data = list(common.users.aggregate([
+            {'$match': {'$and': [
+                {'ratings.movie_id': item1},
+                {'ratings.movie_id': item2}
+            ]}},
+            {'$unwind': '$ratings'},
+            {'$match': {'ratings.movie_id': {'$in': [item1, item2]}}},
+            {'$group': {
+                '_id': '$ratings.movie_id',
+                'sum': {'$sum': '$ratings.rating'},
+                'count': {'$sum': 1}
+            }},
+            {'$project': {
+                '_id': 1,
+                'nume': {'$divide': ['$sum', '$count']},
+                'card': '$count'
+            }}
+        ]))
 
-        num = 0
-        den = data.count()
-        if den == 0:
+        if len(data) == 0:
             return { 'deviation': 0, 'cardinality': 0 }
-        for user in data:
-            num += user['ratings'][item1]['rating'] - user['ratings'][item2]['rating']
-
-        return { 'deviation': num / float(den), 'cardinality': den }
+        return { 'deviation': data[0]['nume'] - data[1]['nume'], 'cardinality': data[0]['card'] }
 
     def predict_ratings(self, user_id, movies):
         user_ratings = common.users.find_one({'id': user_id}, {'_id': 0, 'ratings': 1})['ratings']
