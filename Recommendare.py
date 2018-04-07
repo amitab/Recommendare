@@ -14,8 +14,6 @@ class Recommendare:
         self.user_interface  = UserWrapper()
         self.slope_one = SlopeOne()
 
-        self.recommended_movies = {}
-
     def _recommend_movies_list(self, user_id, neighbours, movies):
         similarity = {n['user_id']: n['similarity'] for n in neighbours}
         cosine_ratings = defaultdict(lambda: defaultdict(lambda: 0))
@@ -63,4 +61,92 @@ class Recommendare:
         return sorted(self._recommend_movies_list(user_id, neighbours, movies), key=itemgetter('predicted_rating'), reverse=True)[:count]
 
     def predict_rating(self, user_id, movie_id, knn=3):
-        pass
+        users = common.users.aggregate([{
+            '$match': {
+                'ratings.movie_id': 1,
+                'id': {
+                '$ne': 344
+                }
+            }
+            }, {
+            '$lookup': {
+                'from': 'user_similarity',
+                'localField': 'id',
+                'foreignField': 'user_id',
+                'as': 'similarity'
+            }
+            }, {
+            '$project': {
+                '_id': 0,
+                'id': 1,
+                'rating': {
+                '$let': {
+                    'vars': {
+                    'rr': {
+                        '$arrayElemAt': [{
+                        '$filter': {
+                            'input': '$ratings',
+                            'as': 'rating',
+                            'cond': {
+                            '$eq': ['$$rating.movie_id', 1]
+                            }
+                        }
+                        }, 0]
+                    }
+                    },
+                    'in': '$$rr.rating'
+                }
+                },
+                'similarity': {
+                '$let': {
+                    'vars': {
+                    'kk': {
+                        '$let': {
+                        'vars': {
+                            'similarity': {
+                            '$arrayElemAt': ["$similarity", 0]
+                            }
+                        },
+                        'in': {
+                            '$arrayElemAt': [{
+                            '$filter': {
+                                'input': '$$similarity.similarity',
+                                'as': 'sim',
+                                'cond': {
+                                '$eq': ['$$sim.user_id', 344]
+                                }
+                            }
+                            }, 0]
+                        }
+                        }
+                    }
+                    },
+                    'in': '$$kk.similarity'
+                }
+                }
+            }
+            }, {
+            '$sort': {
+                'similarity': -1
+            }
+            }, {
+            '$limit': 5}])
+        slope = self.slope_one.predict_rating(user_id, movie_id)
+        den = 0.0
+        num = 0
+        for user in users:
+            den += user['similarity']
+            num += user['rating'] * user['similarity']
+        if den == 0.0:
+            return slope
+        return ((num / den) + slope) / 2
+
+    def register_user(self, user_data):
+        self.user_similarity.register_user(user_data)
+
+    def update_user_likes(self, user_id, likes):
+        self.self.user_similarity.update_user_likes(user_id, likes)
+
+    def user_rate_movie(self, user_id, movie_id, rating):
+        self.slope_one.update_deviation(user_id, movie_id, rating)
+        self.user_similarity.rate_movie(user_id, movie_id, rating)
